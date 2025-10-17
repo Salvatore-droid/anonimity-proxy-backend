@@ -1,8 +1,11 @@
 from rest_framework import authentication, exceptions
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 import jwt
 from django.conf import settings
 import datetime
+import json
+
+User = get_user_model()
 
 class JWTAuthentication(authentication.BaseAuthentication):
     def authenticate(self, request):
@@ -15,9 +18,9 @@ class JWTAuthentication(authentication.BaseAuthentication):
             # Extract token from "Bearer <token>"
             prefix, token = auth_header.split(' ')
             if prefix.lower() != 'bearer':
-                raise exceptions.AuthenticationFailed('Invalid authorization header')
+                return None
         except ValueError:
-            raise exceptions.AuthenticationFailed('Invalid authorization header')
+            return None
 
         try:
             # Decode and verify JWT token
@@ -25,8 +28,9 @@ class JWTAuthentication(authentication.BaseAuthentication):
             
             # Check if token is expired
             if 'exp' in payload:
-                exp = datetime.datetime.fromtimestamp(payload['exp'], tz=datetime.timezone.utc)
-                if exp < datetime.datetime.now(datetime.timezone.utc):
+                exp_timestamp = payload['exp']
+                current_timestamp = datetime.datetime.now(datetime.timezone.utc).timestamp()
+                if exp_timestamp < current_timestamp:
                     raise exceptions.AuthenticationFailed('Token has expired')
             
             # Get user from token
@@ -41,15 +45,18 @@ class JWTAuthentication(authentication.BaseAuthentication):
                 
             return (user, token)
             
+        except jwt.ExpiredSignatureError:
+            raise exceptions.AuthenticationFailed('Token has expired')
         except jwt.InvalidTokenError:
             raise exceptions.AuthenticationFailed('Invalid token')
         except Exception as e:
-            raise exceptions.AuthenticationFailed(str(e))
+            print(f"JWT Authentication error: {e}")
+            raise exceptions.AuthenticationFailed('Authentication failed')
 
 def create_jwt_token(user):
     """Create JWT token for user"""
     payload = {
-        'user_id': user.id,
+        'user_id': str(user.id),  # Ensure user_id is string for UUID
         'username': user.username,
         'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1),
         'iat': datetime.datetime.now(datetime.timezone.utc)
@@ -60,7 +67,7 @@ def create_jwt_token(user):
 def create_refresh_token(user):
     """Create refresh token for user"""
     payload = {
-        'user_id': user.id,
+        'user_id': str(user.id),  # Ensure user_id is string for UUID
         'type': 'refresh',
         'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7),
         'iat': datetime.datetime.now(datetime.timezone.utc)
@@ -83,6 +90,8 @@ def verify_refresh_token(token):
         user = User.objects.get(id=user_id)
         return user
         
+    except jwt.ExpiredSignatureError:
+        raise exceptions.AuthenticationFailed('Refresh token has expired')
     except jwt.InvalidTokenError:
         raise exceptions.AuthenticationFailed('Invalid refresh token')
     except User.DoesNotExist:

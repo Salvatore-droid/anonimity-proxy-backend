@@ -1,12 +1,13 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q, Count
 from django.utils import timezone
 from .models import User, ProxyServer, UserSession, ConnectionLog
 from .serializers import *
 from .proxy_manager import ProxyManager
+from .authentication import create_jwt_token, create_refresh_token, verify_refresh_token
+import uuid
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
@@ -14,11 +15,15 @@ def register_user(request):
     serializer = UserRegistrationSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
-        refresh = RefreshToken.for_user(user)
+        
+        # Create tokens using our custom JWT functions
+        access_token = create_jwt_token(user)
+        refresh_token = create_refresh_token(user)
+        
         return Response({
             'user': UserSerializer(user).data,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
+            'access': access_token,
+            'refresh': refresh_token,
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -28,13 +33,42 @@ def login_user(request):
     serializer = LoginSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.validated_data['user']
-        refresh = RefreshToken.for_user(user)
+        
+        # Create tokens using our custom JWT functions
+        access_token = create_jwt_token(user)
+        refresh_token = create_refresh_token(user)
+        
         return Response({
             'user': UserSerializer(user).data,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
+            'access': access_token,
+            'refresh': refresh_token,
         })
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def refresh_token(request):
+    """Refresh access token using refresh token"""
+    refresh_token = request.data.get('refresh')
+    
+    if not refresh_token:
+        return Response(
+            {'error': 'Refresh token is required'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        user = verify_refresh_token(refresh_token)
+        access_token = create_jwt_token(user)
+        
+        return Response({
+            'access': access_token,
+        })
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 class ProxyServerViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProxyServerSerializer

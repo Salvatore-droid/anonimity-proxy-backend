@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 import uuid
-import json
 
 class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -11,12 +10,35 @@ class User(AbstractUser):
         choices=[('free', 'Free'), ('premium', 'Premium')],
         default='free'
     )
-    data_used = models.BigIntegerField(default=0)  # in bytes
+    data_used = models.BigIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Fix the groups and user_permissions conflict
+    groups = models.ManyToManyField(
+        'auth.Group',
+        verbose_name='groups',
+        blank=True,
+        help_text='The groups this user belongs to.',
+        related_name='proxyapp_user_set',
+        related_query_name='proxyapp_user',
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        verbose_name='user permissions',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        related_name='proxyapp_user_set',
+        related_query_name='proxyapp_user',
+    )
+
     def __str__(self):
         return f"{self.username} ({self.subscription_tier})"
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.id = uuid.uuid4()
+        super().save(*args, **kwargs)
 
 class ProxyServer(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
