@@ -52,7 +52,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'proxy_app.middleware.DebugMiddleware',  # Add this for debugging
+    'base.middleware.DebugMiddleware',  # Add this for debugging
 ]
 
 ROOT_URLCONF = 'proxy_project.urls'
