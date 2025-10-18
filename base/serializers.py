@@ -15,6 +15,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('username', 'email', 'password', 'mobile_id', 'subscription_tier')
+        extra_kwargs = {
+            'username': {'validators': []},  # Disable automatic unique validation
+            'mobile_id': {'validators': []}  # Disable automatic unique validation
+        }
 
     def create(self, validated_data):
         user = User.objects.create_user(
@@ -25,6 +29,16 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             subscription_tier=validated_data.get('subscription_tier', 'free')
         )
         return user
+
+    def validate(self, data):
+        # Manual unique validation
+        if User.objects.filter(username=data['username']).exists():
+            raise serializers.ValidationError({'username': 'Username already exists'})
+        
+        if data.get('mobile_id') and User.objects.filter(mobile_id=data['mobile_id']).exists():
+            raise serializers.ValidationError({'mobile_id': 'Mobile ID already registered'})
+        
+        return data
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()

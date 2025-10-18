@@ -129,7 +129,7 @@ DATABASES = {
     }
 }
 
-VPN_CONFIG_DIR = '/tmp/vpn_configs'
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
