@@ -1,0 +1,25 @@
+# render.yaml
+services:
+  - type: web
+    name: anonimity-vpn-backend
+    env: docker
+    plan: free
+    docker:
+      dockerfile: Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: anonimity-vpn-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com,localhost,127.0.0.1"
+
+databases:
+  - name: anonimity-vpn-db
+    plan: free
+    databaseName: anonimity_vpn
+    user: anonimity_user

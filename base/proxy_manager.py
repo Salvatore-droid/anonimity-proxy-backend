@@ -1,11 +1,11 @@
-from .real_vpn_manager import RealVPNManager
+# proxy_manager.py - Updated for cloud
+from .cloud_vpn_manager import CloudVPNManager
 from django.utils import timezone
 from .models import ProxyServer, UserSession, ConnectionLog
-import threading
 
 class ProxyManager:
     def __init__(self):
-        self.real_vpn = RealVPNManager()
+        self.real_vpn = CloudVPNManager()  # Use cloud manager
     
     @staticmethod
     def get_optimal_server(country=None):
@@ -15,14 +15,12 @@ class ProxyManager:
         if country and country != 'Automatic':
             queryset = queryset.filter(country__iexact=country)
         
-        # Use real server metrics
         queryset = queryset.filter(load__lt=0.8)
-        
         return queryset.order_by('load', 'latency').first()
     
     def create_session(self, user, server_id=None, country=None, security_level='high', 
                       client_ip=None, config=None):
-        """Create real VPN session"""
+        """Create real VPN session in cloud"""
         
         # Get or select server
         if server_id:
@@ -35,6 +33,14 @@ class ProxyManager:
             if not server:
                 raise Exception("No available servers for the selected location")
 
+        # Verify user has required cloud certificates
+        if server.vpn_type == 'openvpn':
+            if not user.client_certificate or not user.client_private_key:
+                raise Exception("User missing OpenVPN certificates for cloud deployment")
+        elif server.vpn_type == 'wireguard':
+            if not user.wireguard_private_key:
+                raise Exception("User missing WireGuard private key for cloud deployment")
+
         # End any existing session
         UserSession.objects.filter(user=user, is_active=True).update(
             is_active=False, 
@@ -44,22 +50,22 @@ class ProxyManager:
         # Stop any running VPN connection
         self.real_vpn.stop_connection(str(user.id))
 
-        # Start real VPN connection based on server type
+        # Start real VPN connection in cloud
         try:
+            print(f"☁️ Starting {server.vpn_type} connection in cloud...")
+            
             if server.vpn_type == 'wireguard':
                 success = self.real_vpn.start_wireguard_connection(server, user)
             elif server.vpn_type == 'openvpn':
                 success = self.real_vpn.start_openvpn_connection(server, user)
-            elif server.vpn_type == 'socks5':
-                success = self.real_vpn.start_socks5_connection(server, user)
             else:
-                raise Exception(f"Unsupported VPN type: {server.vpn_type}")
+                raise Exception(f"Unsupported VPN type in cloud: {server.vpn_type}")
             
             if not success:
-                raise Exception("Failed to establish VPN connection")
+                raise Exception("Failed to establish VPN connection in cloud")
                 
         except Exception as e:
-            raise Exception(f"VPN connection failed: {str(e)}")
+            raise Exception(f"Cloud VPN connection failed: {str(e)}")
 
         # Create session record
         session = UserSession.objects.create(
@@ -72,6 +78,7 @@ class ProxyManager:
                 'kill_switch': config.get('enable_kill_switch', True) if config else True,
                 'dns_protection': config.get('enable_dns_protection', True) if config else True,
                 'vpn_type': server.vpn_type,
+                'cloud_deployment': True,
                 'config': config or {}
             }
         )
@@ -92,6 +99,7 @@ class ProxyManager:
                 'vpn_type': server.vpn_type,
                 'security_level': security_level,
                 'client_ip': client_ip,
+                'cloud_deployment': True,
                 'real_connection': True
             }
         )
@@ -99,31 +107,27 @@ class ProxyManager:
         return session
 
     def end_session(self, session):
-        """End real VPN session"""
-        # Stop VPN connection
+        """End real VPN session in cloud"""
         self.real_vpn.stop_connection(str(session.user.id))
         
         session.is_active = False
         session.end_time = timezone.now()
         session.save()
 
-        # Update server stats
         server = session.proxy_server
         server.current_users = max(0, server.current_users - 1)
         server.update_load()
         server.save()
 
-        # Update user data usage (you'll need to implement real data tracking)
         session.user.data_used += session.data_used
         session.user.save()
 
-        # Log disconnection
         ConnectionLog.objects.create(
             session=session,
             event_type='disconnect',
             details={
                 'data_used': session.data_used,
                 'duration': str(session.duration()) if session.duration() else None,
-                'real_connection': True
+                'cloud_deployment': True
             }
         )
