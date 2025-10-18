@@ -13,6 +13,10 @@ class User(AbstractUser):
     data_used = models.BigIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    wireguard_private_key = models.TextField(blank=True)
+    wireguard_public_key = models.TextField(blank=True)
+    client_certificate = models.TextField(blank=True)
+    client_private_key = models.TextField(blank=True)
 
     # Fix the groups and user_permissions conflict
     groups = models.ManyToManyField(
@@ -72,6 +76,11 @@ class ProxyServer(models.Model):
     encryption = models.CharField(max_length=50, default='AES-256-GCM')
     handshake = models.CharField(max_length=50, default='RSA-2048')
 
+    ca_certificate = models.TextField(blank=True)
+    server_certificate = models.TextField(blank=True)
+    server_key = models.TextField(blank=True)
+    dh_params = models.TextField(blank=True)
+
     class Meta:
         indexes = [
             models.Index(fields=['country', 'is_active']),
@@ -84,6 +93,7 @@ class ProxyServer(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.country}) - {self.load*100:.1f}%"
+
 
 class UserSession(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
