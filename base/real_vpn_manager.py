@@ -51,7 +51,7 @@ verb 3
 {user.client_certificate}
 </cert>
 <key>
-{user.private_key}
+{user.client_private_key}
 </key>
 """
         return config
