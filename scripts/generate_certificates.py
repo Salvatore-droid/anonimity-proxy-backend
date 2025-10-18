@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 class ProductionCertificateGenerator:
-    def __init__(self, ca_dir='/etc/vpn-ca/production'):
+    def __init__(self, ca_dir='/tmp/vpn-ca/production'):
         self.ca_dir = Path(ca_dir)
         self.ca_dir.mkdir(parents=True, exist_ok=True)
         
