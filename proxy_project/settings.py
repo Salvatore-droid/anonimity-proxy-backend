@@ -122,11 +122,16 @@ WSGI_APPLICATION = 'proxy_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+import os
+import dj_database_url
+
+# Database configuration
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': '/tmp/db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        # Replace with your actual connection string
+        default=os.environ.get('DATABASE_URL', 'postgresql://admin:TqfvErHWRlNmZ8ZbsSfiwYmIIDwLHWGc@dpg-d3q2h3qli9vc73c10sq0-a.oregon-postgres.render.com/anonimity_proxy'),
+        conn_max_age=600
+    )
 }
 
 
