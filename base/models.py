@@ -58,6 +58,19 @@ class ProxyServer(models.Model):
     current_users = models.IntegerField(default=0)
     location_data = models.JSONField(default=dict)  # GPS coordinates, etc.
     created_at = models.DateTimeField(auto_now_add=True)
+    vpn_config = models.TextField(blank=True)  # OpenVPN/WireGuard config
+    vpn_type = models.CharField(
+        max_length=20,
+        choices=[('openvpn', 'OpenVPN'), ('wireguard', 'WireGuard'), ('socks5', 'SOCKS5')],
+        default='openvpn'
+    )
+    public_key = models.TextField(blank=True)  # For WireGuard
+    private_key = models.TextField(blank=True)  # For WireGuard (encrypted)
+    endpoint = models.CharField(max_length=255, blank=True)  # Server endpoint
+    
+    # Encryption settings
+    encryption = models.CharField(max_length=50, default='AES-256-GCM')
+    handshake = models.CharField(max_length=50, default='RSA-2048')
 
     class Meta:
         indexes = [
@@ -82,6 +95,11 @@ class UserSession(models.Model):
     data_used = models.BigIntegerField(default=0)  # in bytes
     is_active = models.BooleanField(default=True)
     session_config = models.JSONField(default=dict)  # Security level, kill switch, etc.
+    vpn_pid = models.IntegerField(null=True, blank=True)  # VPN process ID
+    interface = models.CharField(max_length=20, blank=True)  # Network interface
+    assigned_ip = models.GenericIPAddressField(null=True, blank=True)
+    vpn_config_file = models.TextField(blank=True)  # Generated config
+    is_routing = models.BooleanField(default=False)
 
     def duration(self):
         if self.end_time:

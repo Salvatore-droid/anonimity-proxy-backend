@@ -12,10 +12,28 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 from datetime import datetime, timedelta
+from cryptography.fernet import Fernet
+from django.conf import settings
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Add to settings.py
+VPN_CONFIG_DIR = '/tmp/vpn_configs'
+WIREGUARD_PATH = '/usr/bin/wg'
+OPENVPN_PATH = '/usr/sbin/openvpn'
 
+# Encryption for storing keys
+
+
+class KeyManager:
+    def __init__(self):
+        self.cipher = Fernet(settings.VPN_KEY_ENCRYPTION_KEY)
+    
+    def encrypt_key(self, key):
+        return self.cipher.encrypt(key.encode()).decode()
+    
+    def decrypt_key(self, encrypted_key):
+        return self.cipher.decrypt(encrypted_key.encode()).decode()
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
