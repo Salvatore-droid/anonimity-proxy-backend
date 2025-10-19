@@ -26,3 +26,4 @@ scapy==2.6.1
 six==1.17.0
 sqlparse==0.5.3
 urllib3==2.5.0
+dj-database-url==2.1.0
