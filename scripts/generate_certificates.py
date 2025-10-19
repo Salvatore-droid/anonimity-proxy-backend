@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 PRODUCTION-READY: Automated certificate generation with REAL South Africa VPN servers
++ LAPTOP SERVER SUPPORT
 """
 
 import os
@@ -87,8 +88,28 @@ class ProductionCertificateGenerator:
                 'port': 1194,
                 'protocol': 'openvpn',
                 'provider': 'Windscribe'
+            },
+            
+            # ========== YOUR LAPTOP SERVER ==========
+            {
+                'name': 'laptop-home-server',
+                'domain': 'home.anonimityvpn.com',
+                'ip_address': 'YOUR_PUBLIC_IP',  # ← REPLACE WITH YOUR PUBLIC IP
+                'country': 'Your Country',
+                'city': 'Your City',
+                'port': 1194,
+                'protocol': 'openvpn',
+                'provider': 'AnonimityVPN'
             }
         ]
+    
+    def set_laptop_ip(self, public_ip):
+        """Set your laptop's public IP dynamically"""
+        for server in self.production_servers:
+            if server['name'] == 'laptop-home-server':
+                server['ip_address'] = public_ip
+                print(f"✅ Laptop server IP set to: {public_ip}")
+                break
     
     def generate_ca(self):
         """Generate Certificate Authority"""
@@ -293,6 +314,7 @@ tls-version-min 1.2
             'metadata': {
                 'total_servers': len(self.production_servers),
                 'south_africa_servers': len([s for s in self.production_servers if s['country'] == 'South Africa']),
+                'laptop_server': 'laptop-home-server' in [s['name'] for s in self.production_servers],
                 'generated_at': subprocess.getoutput('date -Iseconds')
             }
         }
@@ -323,13 +345,19 @@ tls-version-min 1.2
         except FileNotFoundError:
             return ""
     
-    def run_complete_setup(self):
+    def run_complete_setup(self, laptop_public_ip=None):
         """Run complete production setup"""
         print("🚀 Starting COMPLETE PRODUCTION VPN SETUP")
         print("=" * 50)
+        
+        # Set laptop IP if provided
+        if laptop_public_ip:
+            self.set_laptop_ip(laptop_public_ip)
+        
         print("🌍 REAL SERVERS TO BE CONFIGURED:")
         for server in self.production_servers:
-            print(f"   • {server['name']}: {server['ip_address']} ({server['country']})")
+            provider_info = f" ({server['provider']})" if server['provider'] != 'AnonimityVPN' else " (YOUR LAPTOP)"
+            print(f"   • {server['name']}: {server['ip_address']} {provider_info}")
         print("=" * 50)
         
         # Generate CA
@@ -371,21 +399,32 @@ tls-version-min 1.2
         print(f"   • Certificate Authority: ✅ GENERATED")
         print(f"   • Server Certificates: ✅ {production_data['metadata']['total_servers']} SERVERS")
         print(f"   • South Africa Servers: ✅ {production_data['metadata']['south_africa_servers']}")
+        print(f"   • Laptop Server: ✅ {production_data['metadata']['laptop_server']}")
         print(f"   • DH Parameters: ✅ 2048-bit")
         print(f"   • TLS Auth: ✅ GENERATED")
         print("")
-        print("🌍 REAL SOUTH AFRICA SERVERS READY:")
+        print("🌍 REAL SERVERS READY:")
         for server_name, server_data in production_data['servers'].items():
-            if server_data['server_info']['country'] == 'South Africa':
-                info = server_data['server_info']
-                print(f"   • {info['name']}: {info['ip_address']} ({info['provider']})")
+            info = server_data['server_info']
+            provider_info = f" ({info['provider']})" if info['provider'] != 'AnonimityVPN' else " (YOUR LAPTOP)"
+            print(f"   • {info['name']}: {info['ip_address']}{provider_info}")
         print("")
         print("🚀 NEXT STEPS:")
         print("   1. Run: python manage.py load_production_servers")
-        print("   2. Your VPN service is now PRODUCTION READY!")
+        print("   2. Setup OpenVPN server on your laptop")
+        print("   3. Configure port forwarding on your router")
+        print("   4. Your VPN service is now PRODUCTION READY!")
         print("=" * 50)
 
 if __name__ == "__main__":
+    # Get your public IP automatically
+    try:
+        import requests
+        public_ip = requests.get('https://api.ipify.org', timeout=5).text
+        print(f"🌐 Detected public IP: {public_ip}")
+    except:
+        public_ip = input("🌐 Enter your public IP: ")
+    
     # Run complete production setup
     generator = ProductionCertificateGenerator()
-    production_data = generator.run_complete_setup()
+    production_data = generator.run_complete_setup(laptop_public_ip=public_ip)
