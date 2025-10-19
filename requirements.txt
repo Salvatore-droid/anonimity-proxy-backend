@@ -4,6 +4,7 @@ cffi==2.0.0
 channels==4.0.0
 charset-normalizer==3.4.4
 cryptography==46.0.3
+dj-database-url==2.1.0
 Django==4.2.7
 django-cors-headers==4.3.1
 djangorestframework==3.14.0
@@ -16,6 +17,7 @@ openvpn-api==0.3.0
 openvpn-status==0.2.2
 packaging==25.0
 psutil==7.1.0
+psycopg2==2.9.11
 pycparser==2.23
 PyJWT==2.8.0
 pyroute2==0.9.4
@@ -25,5 +27,5 @@ requests==2.31.0
 scapy==2.6.1
 six==1.17.0
 sqlparse==0.5.3
+typing_extensions==4.15.0
 urllib3==2.5.0
-dj-database-url==2.1.0
